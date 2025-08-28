@@ -56,7 +56,7 @@ A aplicação foi desenvolvida em **Python** utilizando o micro-framework **Fast
 
 1.  **Clone o repositório:**
     ```bash
-    git clone [URL_DO_SEU_REPOSITORIO_AQUI]
+    git clone https://github.com/gabrielBrusarrosco/ipag_desafio.git
     cd ipag-desafio
     ```
 

@@ -4,9 +4,9 @@ services:
     container_name: ipag_postgres
     restart: always
     environment:
-      POSTGRES_DB: ipag_db
-      POSTGRES_USER: ipag_user
-      POSTGRES_PASSWORD: ipag_password
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     ports:
       - "5432:5432"
     volumes:

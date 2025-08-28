@@ -14,34 +14,34 @@ logging.basicConfig(
 MAX_RETRIES = 3
 
 def on_message_callback(ch, method, properties, body):
-    logging.info("Mensagem recebida...")
     
     try:
         message_data = json.loads(body)
 
         required_keys = ['order_id', 'old_status', 'new_status', 'timestamp']
         if not all(key in message_data for key in required_keys):
-            logging.error(f"Mensagem malformada, descartando: {message_data}")
+            logging.error(f"Mensagem malformada, descartando via ACK: {message_data}")
             ch.basic_ack(delivery_tag=method.delivery_tag)
             return
 
-        # Lógica Principal
         db = SessionLocal()
         try:
             NotificationLogRepository.create_log(db, log_data=message_data)
+            
             logging.info(f"Order {message_data['order_id']} status changed from {message_data['old_status']} to {message_data['new_status']}")
             logging.info(f"Notification sent for order {message_data['order_id']}")
 
             ch.basic_ack(delivery_tag=method.delivery_tag)
+            logging.info("Mensagem processada com sucesso (ACK).")
 
         except Exception as db_error:
             logging.error(f"Erro de banco de dados ao processar mensagem: {db_error}")
             raise db_error
         finally:
+            logging.info("Fechando sessão com o banco de dados.")
             db.close()
 
     except Exception as e:
-        logging.error(f"Erro ao processar mensagem: {e}")
         headers = properties.headers if properties.headers else {}
         retries = headers.get('x-retries', 0)
         
@@ -52,7 +52,7 @@ def on_message_callback(ch, method, properties, body):
             ch.basic_publish(exchange='', routing_key='order_status_updates', body=body, properties=new_properties)
             ch.basic_nack(delivery_tag=method.delivery_tag, requeue=False)
         else:
-            logging.error(f"Máximo de {MAX_RETRIES} tentativas atingido. Descartando mensagem.")
+            logging.error(f"Máximo de {MAX_RETRIES} tentativas atingido. Enviando para a Dead Letter Queue.")
             ch.basic_nack(delivery_tag=method.delivery_tag, requeue=False)
 
 def main():
@@ -61,15 +61,23 @@ def main():
             connection = pika.BlockingConnection(pika.ConnectionParameters(host='rabbitmq'))
             channel = connection.channel()
             
+            dlq_name = 'order_status_updates_dlq'
+            channel.queue_declare(queue=dlq_name, durable=True)
+            
             queue_name = 'order_status_updates'
-            channel.queue_declare(queue=queue_name, durable=True)
+            queue_args = {
+                "x-dead-letter-exchange": "",
+                "x-dead-letter-routing-key": dlq_name
+            }
+            channel.queue_declare(queue=queue_name, durable=True, arguments=queue_args)
             
             channel.basic_qos(prefetch_count=1)
             
             channel.basic_consume(queue=queue_name, on_message_callback=on_message_callback)
             
-            print('✅ Worker iniciado. Aguardando por mensagens. Para sair, pressione CTRL+C')
+            print('✅ Worker iniciado com DLQ. Aguardando por mensagens.')
             channel.start_consuming()
+
         except pika.exceptions.AMQPConnectionError as e:
             print(f"Erro de conexão com o RabbitMQ: {e}. Tentando reconectar em 5 segundos...")
             time.sleep(5)

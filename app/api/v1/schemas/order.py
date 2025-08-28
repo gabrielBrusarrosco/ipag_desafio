@@ -3,6 +3,7 @@ from typing import List
 from datetime import datetime
 from .customer import OrderCustomer, CustomerResponse
 from .item import OrderItemBase, OrderItemResponse
+import uuid
 
 class OrderData(BaseModel):
     items: List[OrderItemBase]
@@ -12,6 +13,7 @@ class OrderCreate(BaseModel):
     order: OrderData
 
 class OrderResponse(BaseModel):
+    id: uuid.UUID
     order_id: str = Field(alias="order_number")
 
     status: str

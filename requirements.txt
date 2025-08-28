@@ -6,3 +6,4 @@ alembic
 validate-docbr
 email-validator
 pika
+pydantic-settings

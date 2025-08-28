@@ -1,6 +1,6 @@
 from fastapi import FastAPI
-from app.api.v1.endpoints import orders
 from fastapi.middleware.cors import CORSMiddleware
+from app.api.v1.endpoints import orders, health_check
 
 app = FastAPI(
     title="Desafio iPag - API de Pedidos",
@@ -22,6 +22,7 @@ app.add_middleware(
 )
 
 app.include_router(orders.router, prefix="/api/v1")
+app.include_router(health_check.router, prefix="/v1")
 
 @app.get("/")
 def read_root():
