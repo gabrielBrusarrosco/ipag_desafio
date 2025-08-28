@@ -1,0 +1,51 @@
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: ipag_postgres
+    restart: always
+    environment:
+      POSTGRES_DB: ipag_db
+      POSTGRES_USER: ipag_user
+      POSTGRES_PASSWORD: ipag_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  rabbitmq:
+    image: rabbitmq:3.11-management
+    container_name: ipag_rabbitmq
+    restart: always
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+
+  api:
+    build: .
+    container_name: ipag_api
+    restart: always
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/code
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    depends_on:
+      - db
+      - rabbitmq
+
+  worker:
+    build: .
+    container_name: ipag_worker
+    restart: always
+    volumes:
+      - .:/code
+    command: python -m app.worker.main
+    depends_on:
+      - db
+      - rabbitmq
+
+volumes:
+  postgres_data:
